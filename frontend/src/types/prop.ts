@@ -1,3 +1,5 @@
+import type { RevStamp } from './sync';
+
 /** 道具固定方式 */
 export type Fixation = '支架' | '磁吸' | '黏土';
 
@@ -25,6 +27,16 @@ export interface PropState {
   /** 固定方式 */
   fixation: Fixation;
   updatedAt: number;
+  /** 交接：稳定标识（同镜头 + 道具名的同一区间条目） */
+  syncUid: string;
+  /** 交接：整行修订戳 */
+  rev: RevStamp;
+  /** 交接：帧区间修订戳（区间两边都改过时据此并列） */
+  rangeRev: RevStamp;
+  /** 交接：位置/旋转修订戳 */
+  posRev: RevStamp;
+  /** 交接：待整理标记 */
+  pendingTag: string | null;
 }
 
 export const createEmptyProp = (shotId: number): PropState => ({
@@ -38,4 +50,9 @@ export const createEmptyProp = (shotId: number): PropState => ({
   rotation: 0,
   fixation: '支架',
   updatedAt: Date.now(),
+  syncUid: '',
+  rev: { deviceId: '', seq: 0 },
+  rangeRev: { deviceId: '', seq: 0 },
+  posRev: { deviceId: '', seq: 0 },
+  pendingTag: null,
 });

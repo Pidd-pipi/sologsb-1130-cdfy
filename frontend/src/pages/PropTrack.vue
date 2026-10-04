@@ -9,7 +9,7 @@ import { useShotStore } from '../stores/shotStore';
 import * as api from '../db/api';
 import { accumulateOffsets, buildCurvePoints, estimateSpeed } from '../utils/frameMath';
 import { formatMm } from '../utils/format';
-import { FIXATION_OPTIONS, type Fixation, type PropState } from '../types/prop';
+import { FIXATION_OPTIONS, createEmptyProp, type Fixation, type PropState } from '../types/prop';
 import type { FrameEntry } from '../types/frame';
 import EmptyState from '../components/common/EmptyState.vue';
 import StatusTag from '../components/common/StatusTag.vue';
@@ -118,8 +118,8 @@ async function submit() {
     flash('已更新道具位移记录');
   } else {
     const payload: PropState = {
+      ...createEmptyProp(activeShotId.value),
       name: form.value.name.trim(),
-      shotId: activeShotId.value,
       fromFrame,
       toFrame,
       posX: form.value.posX,
@@ -127,7 +127,6 @@ async function submit() {
       posZ: form.value.posZ,
       rotation: form.value.rotation,
       fixation: form.value.fixation,
-      updatedAt: Date.now(),
     };
     await api.addProp(payload);
     flash('已登记道具位移记录');

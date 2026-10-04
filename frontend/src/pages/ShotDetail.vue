@@ -13,7 +13,7 @@ import { useFrameSequence } from '../hooks/useFrameSequence';
 import { useProgress } from '../hooks/useProgress';
 import * as api from '../db/api';
 import { durationToFrames, estimateSpeed, framesToDuration } from '../utils/frameMath';
-import { FIXATION_OPTIONS, type Fixation, type PropState } from '../types/prop';
+import { FIXATION_OPTIONS, createEmptyProp, type Fixation, type PropState } from '../types/prop';
 import { SHOT_STATUS_OPTIONS, type ShotStatus } from '../types/shot';
 import type { FrameEntry } from '../types/frame';
 import { SHOT_COUNT_OPTIONS } from '../types/frame';
@@ -158,8 +158,8 @@ async function addProp() {
     return;
   }
   const payload: PropState = {
+    ...createEmptyProp(shotId.value),
     name: propForm.value.name.trim(),
-    shotId: shotId.value,
     fromFrame: Math.max(1, Math.floor(propForm.value.fromFrame)),
     toFrame: Math.max(1, Math.floor(propForm.value.toFrame)),
     posX: propForm.value.posX,
@@ -167,7 +167,6 @@ async function addProp() {
     posZ: propForm.value.posZ,
     rotation: propForm.value.rotation,
     fixation: propForm.value.fixation,
-    updatedAt: Date.now(),
   };
   const id = await api.addProp(payload);
   props.value = [...props.value, { ...payload, id }];

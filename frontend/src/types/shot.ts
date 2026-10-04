@@ -1,3 +1,5 @@
+import type { RevStamp } from './sync';
+
 /** 镜头拍摄状态 */
 export type ShotStatus = '未开机' | '拍摄中' | '已完成';
 
@@ -30,6 +32,10 @@ export interface Shot {
   /** 创建时间戳 */
   createdAt: number;
   updatedAt: number;
+  /** 交接：稳定标识，跨设备对齐同一镜头 */
+  syncUid: string;
+  /** 交接：行修订戳（设备标识 + 顺序号） */
+  rev: RevStamp;
 }
 
 export const createEmptyShot = (): Shot => ({
@@ -44,4 +50,6 @@ export const createEmptyShot = (): Shot => ({
   progressPercent: 0,
   createdAt: Date.now(),
   updatedAt: Date.now(),
+  syncUid: '',
+  rev: { deviceId: '', seq: 0 },
 });

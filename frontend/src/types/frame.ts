@@ -1,3 +1,5 @@
+import type { RevStamp } from './sync';
+
 /** 单帧拍摄张数（定格动画常用 1/2/3 张） */
 export type ShotCount = 1 | 2 | 3;
 
@@ -27,6 +29,16 @@ export interface FrameEntry {
   /** 备注 */
   note: string;
   updatedAt: number;
+  /** 交接：稳定标识，跨设备按同一帧对齐（帧序变化后不变） */
+  syncUid: string;
+  /** 交接：整行修订戳 */
+  rev: RevStamp;
+  /** 交接：曝光字段修订戳（曝光两边都改过时据此并列） */
+  exposureRev: RevStamp;
+  /** 交接：位移量修订戳 */
+  offsetRev: RevStamp;
+  /** 交接：待整理标记（冲突/孤儿），正常行为 null */
+  pendingTag: string | null;
 }
 
 export const createEmptyFrame = (shotId: number, frameNo: number): FrameEntry => ({
@@ -41,6 +53,11 @@ export const createEmptyFrame = (shotId: number, frameNo: number): FrameEntry =>
   propOffsetMm: 0,
   note: '',
   updatedAt: Date.now(),
+  syncUid: '',
+  rev: { deviceId: '', seq: 0 },
+  exposureRev: { deviceId: '', seq: 0 },
+  offsetRev: { deviceId: '', seq: 0 },
+  pendingTag: null,
 });
 
 /** 批量曝光设置（供 /frames 编排台使用） */

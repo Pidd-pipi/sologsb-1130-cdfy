@@ -1,11 +1,28 @@
 <script setup lang="ts">
 /** 应用外壳：顶部导航 + 路由出口 */
+import { onMounted, watch } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { navItems } from './router';
 import { useUiStore } from './stores/uiStore';
+import { useSyncStore } from './stores/syncStore';
 
 const route = useRoute();
 const ui = useUiStore();
+const syncStore = useSyncStore();
+
+syncStore.initDevice();
+
+onMounted(() => {
+  void syncStore.loadPending();
+});
+
+// 从交接页解决完冲突返回时刷新角标
+watch(
+  () => route.path,
+  () => {
+    void syncStore.loadPending();
+  },
+);
 
 function isActive(path: string): boolean {
   if (path === '/') return route.path === '/';
@@ -20,12 +37,15 @@ function isActive(path: string): boolean {
         <span class="logo">帧</span>
         <div class="brand-text">
           <strong>定格动画拍摄帧序编排台</strong>
-          <small>镜头拆分 · 帧序编排 · 曝光与道具位移记录</small>
+          <small>镜头拆分 · 帧序编排 · 曝光与道具位移记录 · 双机交接</small>
         </div>
       </div>
       <nav class="nav">
         <RouterLink v-for="item in navItems" :key="item.path" :to="item.path" :class="{ active: isActive(item.path) }">
           {{ item.label }}
+          <span v-if="item.path === '/handover' && syncStore.pendingCount" class="badge" data-testid="pending-badge">
+            {{ syncStore.pendingCount }}
+          </span>
         </RouterLink>
       </nav>
     </header>
@@ -35,7 +55,7 @@ function isActive(path: string): boolean {
     </main>
 
     <footer class="footbar">
-      <span>数据保存在浏览器本地（IndexedDB：gbstopmotion-db），表单草稿保存在 localStorage</span>
+      <span>本机 {{ syncStore.deviceName }} · 数据保存在浏览器本地（IndexedDB：gbstopmotion-db），表单草稿保存在 localStorage</span>
       <span v-if="ui.lastError" class="err">最近错误：{{ ui.lastError }}</span>
     </footer>
   </div>
@@ -107,6 +127,24 @@ function isActive(path: string): boolean {
 .nav a.active {
   background: #2f6fed;
   color: #fff;
+}
+.badge {
+  display: inline-block;
+  min-width: 16px;
+  padding: 0 5px;
+  margin-left: 5px;
+  height: 16px;
+  line-height: 16px;
+  border-radius: 999px;
+  background: #e8823c;
+  color: #fff;
+  font-size: 10px;
+  text-align: center;
+  box-sizing: border-box;
+}
+.nav a.active .badge {
+  background: #fff;
+  color: #2f6fed;
 }
 .content {
   flex: 1;

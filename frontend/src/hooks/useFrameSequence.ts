@@ -6,6 +6,7 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useFrameStore } from '../stores/frameStore';
 import { useShotStore } from '../stores/shotStore';
+import * as api from '../db/api';
 import { durationToFrames, framesToDuration } from '../utils/frameMath';
 import type { FrameEntry } from '../types/frame';
 
@@ -51,11 +52,13 @@ export function useFrameSequence() {
     const fps = current.fps || 24;
     const count = Math.max(1, frames.value.length);
     const seconds = Math.round((count / fps) * 1000) / 1000;
-    await shotStore.update(shotId.value, {
+    // 区间/时长是帧序的派生值：不为此推进镜头修订戳，帧行自身的盖戳已表达改动
+    await api.touchShotDerived(shotId.value, {
       durationSec: seconds,
       startFrame: current.startFrame,
       endFrame: current.startFrame + count - 1,
     });
+    await shotStore.load();
   }
 
   /** 条带上的单帧曝光/位移改动 */

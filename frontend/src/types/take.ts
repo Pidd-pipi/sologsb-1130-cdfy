@@ -1,3 +1,5 @@
+import type { RevStamp } from './sync';
+
 /** 一条实拍登记记录（按镜头 + 日期汇总当日张数） */
 export interface TakeLog {
   id?: number;
@@ -16,6 +18,12 @@ export interface TakeLog {
   /** 完成百分比 0-100 */
   percent: number;
   updatedAt: number;
+  /** 交接：稳定标识（同镜头 + 拍摄日期 + 设备 + 顺序号派生，天然去重） */
+  syncUid: string;
+  /** 交接：整行修订戳 */
+  rev: RevStamp;
+  /** 交接：待整理标记（找不到镜头等情况） */
+  pendingTag: string | null;
 }
 
 export const createEmptyTake = (shotId: number, shotCode: string): TakeLog => ({
@@ -27,6 +35,9 @@ export const createEmptyTake = (shotId: number, shotCode: string): TakeLog => ({
   remainingFrames: 0,
   percent: 0,
   updatedAt: Date.now(),
+  syncUid: '',
+  rev: { deviceId: '', seq: 0 },
+  pendingTag: null,
 });
 
 /** 废帧分布的一个分组 */
