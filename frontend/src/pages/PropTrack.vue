@@ -7,6 +7,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useShotStore } from '../stores/shotStore';
 import * as api from '../db/api';
+import { addPropTracked, updatePropTracked } from '../handoff/local';
 import { accumulateOffsets, buildCurvePoints, estimateSpeed } from '../utils/frameMath';
 import { formatMm } from '../utils/format';
 import { FIXATION_OPTIONS, type Fixation, type PropState } from '../types/prop';
@@ -59,6 +60,9 @@ const avgSpeed = computed(() => {
   const sum = orderedFrames.value.reduce((s, f) => s + Math.abs(estimateSpeed(f.propOffsetMm, fps)), 0);
   return Math.round((sum / orderedFrames.value.length) * 100) / 100;
 });
+
+/** 帧序变化导入后被标 stale、等待动画师复核的道具区间 */
+const staleProps = computed(() => props.value.filter((p) => p.trajectory === 'stale'));
 
 onMounted(async () => {
   if (!shotStore.ready) await shotStore.load();
@@ -113,8 +117,11 @@ async function submit() {
   }
   const fromFrame = Math.max(1, Math.floor(form.value.fromFrame));
   const toFrame = Math.max(fromFrame, Math.floor(form.value.toFrame));
+  const shot = shotStore.byId(activeShotId.value);
+  const shotCode = shot?.code ?? '';
   if (editingId.value !== null) {
-    await api.updateProp(editingId.value, { ...form.value, name: form.value.name.trim(), fromFrame, toFrame });
+    const existing = props.value.find((p) => p.id === editingId.value);
+    if (existing) await updatePropTracked(shotCode, existing, { ...form.value, name: form.value.name.trim(), fromFrame, toFrame });
     flash('已更新道具位移记录');
   } else {
     const payload: PropState = {
@@ -129,7 +136,7 @@ async function submit() {
       fixation: form.value.fixation,
       updatedAt: Date.now(),
     };
-    await api.addProp(payload);
+    await addPropTracked(shotCode, payload);
     flash('已登记道具位移记录');
   }
   await load(activeShotId.value);
@@ -229,13 +236,19 @@ const trajectoryPoints = computed(() =>
       </div>
 
       <div class="panel">
-        <div class="panel-head"><h2>道具记录</h2><span class="muted">共 {{ props.length }} 条</span></div>
+        <div class="panel-head">
+          <h2>道具记录</h2>
+          <span class="muted">共 {{ props.length }} 条 · 待重算 {{ staleProps.length }} 条</span>
+        </div>
+        <p v-if="staleProps.length" class="feedback" data-testid="prop-stale-tip">
+          对方帧序变化后，以下 {{ staleProps.length }} 条道具轨迹已失效重算（区间已夹回新帧序），请复核坐标曲线
+        </p>
         <table v-if="props.length" class="table" data-testid="prop-track-table">
           <thead>
-            <tr><th>道具</th><th>帧区间</th><th>X</th><th>Y</th><th>Z</th><th>旋转</th><th>固定方式</th><th>操作</th></tr>
+            <tr><th>道具</th><th>帧区间</th><th>X</th><th>Y</th><th>Z</th><th>旋转</th><th>固定方式</th><th>轨迹</th><th>操作</th></tr>
           </thead>
           <tbody>
-            <tr v-for="p in props" :key="p.id">
+            <tr v-for="p in props" :key="p.id" :class="{ stale: p.trajectory === 'stale' }">
               <td>{{ p.name }}</td>
               <td class="mono">{{ p.fromFrame }} – {{ p.toFrame }}</td>
               <td>{{ formatMm(p.posX) }}</td>
@@ -243,6 +256,7 @@ const trajectoryPoints = computed(() =>
               <td>{{ formatMm(p.posZ) }}</td>
               <td>{{ p.rotation }}°</td>
               <td>{{ p.fixation }}</td>
+              <td><span v-if="p.trajectory === 'stale'" class="tag stale">待重算</span><span v-else class="muted">正常</span></td>
               <td class="row-actions">
                 <button type="button" class="btn tiny" @click="startEdit(p)">编辑</button>
                 <button type="button" class="btn tiny danger" @click="removeProp(p.id)">删除</button>
@@ -375,6 +389,27 @@ h1 {
   color: #6b7686;
   font-weight: 600;
   font-size: 12px;
+}
+.table tbody tr.stale {
+  background: #fffaf0;
+}
+.tag.stale {
+  background: #fdf3e2;
+  color: #9a6a16;
+  border: 1px solid #f2d9a6;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.feedback {
+  margin: 0 0 10px;
+  background: #fff7e8;
+  border: 1px solid #f2d9a6;
+  color: #8a5c12;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
 }
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

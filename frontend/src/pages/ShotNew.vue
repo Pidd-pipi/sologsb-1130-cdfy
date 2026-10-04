@@ -9,7 +9,7 @@ import { useShotStore } from '../stores/shotStore';
 import { useFrameStore } from '../stores/frameStore';
 import { useLocalDraft } from '../hooks/useLocalDraft';
 import { buildFrameRange, framesToDuration } from '../utils/frameMath';
-import { addFrames } from '../db/api';
+import { replaceFrameOrder } from '../handoff/local';
 import { FPS_OPTIONS, SHOT_STATUS_OPTIONS, type ShotStatus } from '../types/shot';
 import { createEmptyFrame, type FrameEntry } from '../types/frame';
 import ExposureForm from '../components/common/ExposureForm.vue';
@@ -93,7 +93,8 @@ async function submit() {
       owner: draft.value.owner.trim(),
     });
     const first: FrameEntry = { ...createEmptyFrame(shot.id as number, shot.startFrame), ...exposure.value, id: undefined };
-    await addFrames([first]);
+    // 首帧即写入帧序交接操作，对方导入 shot.upsert + frame.order 后能完整建档
+    await replaceFrameOrder(shot.code, shot.id as number, [first]);
     await frameStore.loadForShot(shot.id as number);
     reset();
     await router.push(`/shots/${shot.id}`);

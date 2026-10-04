@@ -4,6 +4,8 @@ import type { Shot } from '../types/shot';
 import type { FrameEntry } from '../types/frame';
 import type { PropState } from '../types/prop';
 import type { TakeLog } from '../types/take';
+import type { HandOpLogRow, PendingItem } from '../handoff/dbTypes';
+import type { HandOp } from '../handoff/types';
 
 export async function initDb(): Promise<void> {
   if (!db.isOpen()) await db.open();
@@ -132,4 +134,65 @@ export async function deleteTake(id: number): Promise<void> {
 /** 按实拍张数回写镜头进度（Shot 表保存完成百分比快照，便于总览页快速读取） */
 export async function syncShotProgress(shotId: number, percent: number): Promise<void> {
   await db.shots.update(shotId, toPlain({ progressPercent: percent, updatedAt: Date.now() }));
+}
+
+/* ---------------- handoff：已应用操作日志 ---------------- */
+
+/** 已应用操作的 (deviceId, seq) 键集合，导入去重 / 缺口检查用 */
+export async function loadAppliedKeys(): Promise<Set<string>> {
+  const list = await db.handoffOps.toArray();
+  return new Set(list.map((r) => `${r.deviceId} ${r.seq}`));
+}
+
+export async function addOpLog(rows: HandOpLogRow[]): Promise<void> {
+  if (!rows.length) return;
+  await db.handoffOps.bulkAdd(rows.map((r) => toPlain(r)));
+}
+
+/* ---------------- handoff：待整理 ---------------- */
+
+export async function listPending(): Promise<PendingItem[]> {
+  const rows = await db.pending.toArray();
+  return rows.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function addPending(items: PendingItem[]): Promise<void> {
+  if (!items.length) return;
+  await db.pending.bulkAdd(items.map((i) => toPlain(i)));
+}
+
+export async function deletePending(id: number): Promise<void> {
+  await db.pending.delete(id);
+}
+
+export async function countPending(): Promise<number> {
+  return db.pending.count();
+}
+
+/** 当前本机全部业务表 + 待整理的行数（容量校验用） */
+export async function totalRecordCount(): Promise<number> {
+  const [shots, frames, props, takes, pending] = await Promise.all([
+    db.shots.count(),
+    db.frames.count(),
+    db.props.count(),
+    db.takes.count(),
+    db.pending.count(),
+  ]);
+  return shots + frames + props + takes + pending;
+}
+
+/** 本机 / 全部已记录的交接操作（含完整 op，供组包导出与整包转发） */
+export async function listOps(deviceId?: string): Promise<HandOp[]> {
+  const rows = deviceId
+    ? await db.handoffOps.where('deviceId').equals(deviceId).toArray()
+    : await db.handoffOps.toArray();
+  return rows
+    .filter((r): r is HandOpLogRow & { op: HandOp } => typeof r.op === 'object' && r.op !== null)
+    .map((r) => r.op)
+    .sort((a, b) => (a.deviceId < b.deviceId ? -1 : a.deviceId > b.deviceId ? 1 : a.seq - b.seq));
+}
+
+/** 操作日志水位（每设备最大已记录顺序号） */
+export async function listOpLog(): Promise<HandOpLogRow[]> {
+  return db.handoffOps.toArray();
 }

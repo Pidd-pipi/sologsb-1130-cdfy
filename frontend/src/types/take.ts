@@ -1,3 +1,5 @@
+import type { HandoffMeta } from './handoff';
+
 /** 一条实拍登记记录（按镜头 + 日期汇总当日张数） */
 export interface TakeLog {
   id?: number;
@@ -15,6 +17,10 @@ export interface TakeLog {
   remainingFrames: number;
   /** 完成百分比 0-100 */
   percent: number;
+  /** 交接：跨设备稳定标识 / 版本 / 最后改动来源（v4 补齐） */
+  uid?: string;
+  rev?: number;
+  lastChange?: HandoffMeta['lastChange'];
   updatedAt: number;
 }
 

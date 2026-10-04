@@ -1,11 +1,30 @@
 <script setup lang="ts">
 /** 应用外壳：顶部导航 + 路由出口 */
+import { onMounted, onUnmounted, ref } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { navItems } from './router';
 import { useUiStore } from './stores/uiStore';
+import { countPending } from './db/api';
 
 const route = useRoute();
 const ui = useUiStore();
+const pendingCount = ref(0);
+
+async function refreshBadge() {
+  try {
+    pendingCount.value = await countPending();
+  } catch {
+    pendingCount.value = 0;
+  }
+}
+
+onMounted(() => {
+  void refreshBadge();
+  window.addEventListener('gbstopmotion:pending-changed', refreshBadge);
+});
+onUnmounted(() => {
+  window.removeEventListener('gbstopmotion:pending-changed', refreshBadge);
+});
 
 function isActive(path: string): boolean {
   if (path === '/') return route.path === '/';
@@ -26,6 +45,7 @@ function isActive(path: string): boolean {
       <nav class="nav">
         <RouterLink v-for="item in navItems" :key="item.path" :to="item.path" :class="{ active: isActive(item.path) }">
           {{ item.label }}
+          <span v-if="item.path === '/handoff' && pendingCount > 0" class="nav-badge" data-testid="nav-pending-badge">{{ pendingCount }}</span>
         </RouterLink>
       </nav>
     </header>
@@ -107,6 +127,19 @@ function isActive(path: string): boolean {
 .nav a.active {
   background: #2f6fed;
   color: #fff;
+}
+.nav-badge {
+  display: inline-block;
+  min-width: 16px;
+  padding: 0 5px;
+  margin-left: 5px;
+  border-radius: 999px;
+  background: #e8833a;
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  vertical-align: middle;
 }
 .content {
   flex: 1;

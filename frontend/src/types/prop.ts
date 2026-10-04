@@ -1,3 +1,5 @@
+import type { HandoffMeta, TrajectoryState } from './handoff';
+
 /** 道具固定方式 */
 export type Fixation = '支架' | '磁吸' | '黏土';
 
@@ -24,6 +26,12 @@ export interface PropState {
   rotation: number;
   /** 固定方式 */
   fixation: Fixation;
+  /** 交接：跨设备稳定标识 / 版本 / 最后改动来源（v4 补齐） */
+  uid?: string;
+  rev?: number;
+  lastChange?: HandoffMeta['lastChange'];
+  /** 帧序变化后区间落点是否已失效重算 */
+  trajectory?: TrajectoryState;
   updatedAt: number;
 }
 

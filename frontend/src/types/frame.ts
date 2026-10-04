@@ -1,3 +1,6 @@
+import type { HandoffMeta, TrajectoryState } from './handoff';
+import { newUid } from '../handoff/uid';
+
 /** 单帧拍摄张数（定格动画常用 1/2/3 张） */
 export type ShotCount = 1 | 2 | 3;
 
@@ -26,6 +29,12 @@ export interface FrameEntry {
   propOffsetMm: number;
   /** 备注 */
   note: string;
+  /** 交接：跨设备稳定标识 / 版本 / 最后改动来源（v4 补齐） */
+  uid?: string;
+  rev?: number;
+  lastChange?: HandoffMeta['lastChange'];
+  /** 轨迹状态：对方帧序变化导入后标记 stale，轨迹按新帧序重算 */
+  trajectory?: TrajectoryState;
   updatedAt: number;
 }
 
@@ -40,6 +49,10 @@ export const createEmptyFrame = (shotId: number, frameNo: number): FrameEntry =>
   lighting: '主灯 + 柔光箱',
   propOffsetMm: 0,
   note: '',
+  // 新建帧即带稳定身份，最后改动来源由第一次编辑 / 帧序落库时补上
+  uid: newUid(),
+  rev: 1,
+  trajectory: 'ok',
   updatedAt: Date.now(),
 });
 
@@ -50,3 +63,14 @@ export interface BatchExposure {
   iso: number;
   shutterAngle: number;
 }
+
+/** 单帧曝光分组（交接合并时的最小竞争单位） */
+export type ExposureFields =
+  | 'shotCount'
+  | 'exposureSec'
+  | 'aperture'
+  | 'iso'
+  | 'shutterAngle'
+  | 'lighting'
+  | 'propOffsetMm'
+  | 'note';

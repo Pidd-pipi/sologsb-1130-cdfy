@@ -5,6 +5,7 @@
 import { computed, ref } from 'vue';
 import * as api from '../db/api';
 import { useShotStore } from '../stores/shotStore';
+import { addTakeTracked } from '../handoff/local';
 import { durationToFrames } from '../utils/frameMath';
 import type { Shot } from '../types/shot';
 import type { TakeLog, WasteBucket } from '../types/take';
@@ -108,7 +109,7 @@ export function useProgress() {
       percent: p.percent,
       updatedAt: Date.now(),
     };
-    const id = await api.addTake(row);
+    const id = await addTakeTracked(shot.code, row);
     takes.value = [{ ...row, id }, ...takes.value];
     if (typeof shot.id === 'number') await shotStore.syncProgress(shot.id, p.percent);
     return { ...row, id };

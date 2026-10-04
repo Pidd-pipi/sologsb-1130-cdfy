@@ -12,6 +12,7 @@ import { useFrameStore } from '../stores/frameStore';
 import { useFrameSequence } from '../hooks/useFrameSequence';
 import { useProgress } from '../hooks/useProgress';
 import * as api from '../db/api';
+import { addPropTracked } from '../handoff/local';
 import { durationToFrames, estimateSpeed, framesToDuration } from '../utils/frameMath';
 import { FIXATION_OPTIONS, type Fixation, type PropState } from '../types/prop';
 import { SHOT_STATUS_OPTIONS, type ShotStatus } from '../types/shot';
@@ -169,7 +170,7 @@ async function addProp() {
     fixation: propForm.value.fixation,
     updatedAt: Date.now(),
   };
-  const id = await api.addProp(payload);
+  const id = await addPropTracked(shot.value.code, payload);
   props.value = [...props.value, { ...payload, id }];
   propForm.value.name = '';
   flash('已登记道具状态');
@@ -394,10 +395,10 @@ function speedOf(frame: FrameEntry) {
 
         <table v-if="props.length" class="table" data-testid="prop-table">
           <thead>
-            <tr><th>道具</th><th>帧区间</th><th>X</th><th>Y</th><th>Z</th><th>旋转</th><th>固定</th><th>操作</th></tr>
+            <tr><th>道具</th><th>帧区间</th><th>X</th><th>Y</th><th>Z</th><th>旋转</th><th>固定</th><th>轨迹</th><th>操作</th></tr>
           </thead>
           <tbody>
-            <tr v-for="p in props" :key="p.id">
+            <tr v-for="p in props" :key="p.id" :class="{ stale: p.trajectory === 'stale' }">
               <td>{{ p.name }}</td>
               <td class="mono">{{ p.fromFrame }} – {{ p.toFrame }}</td>
               <td>{{ p.posX }}</td>
@@ -405,6 +406,7 @@ function speedOf(frame: FrameEntry) {
               <td>{{ p.posZ }}</td>
               <td>{{ p.rotation }}°</td>
               <td>{{ p.fixation }}</td>
+              <td><span v-if="p.trajectory === 'stale'" class="stale-tag">待重算</span><span v-else class="muted">正常</span></td>
               <td><button type="button" class="btn tiny danger" @click="removeProp(p.id)">删除</button></td>
             </tr>
           </tbody>
@@ -536,6 +538,18 @@ h1 .mono {
 }
 .table tbody tr.active {
   background: #f5f8ff;
+}
+.table tbody tr.stale {
+  background: #fffaf0;
+}
+.stale-tag {
+  background: #fdf3e2;
+  border: 1px solid #f2d9a6;
+  color: #9a6a16;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  white-space: nowrap;
 }
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

@@ -2,6 +2,7 @@
 import { defineStore } from 'pinia';
 import * as api from '../db/api';
 import { toPlain } from '../db';
+import { addShotTracked } from '../handoff/local';
 import { buildFrameRange, framesToDuration } from '../utils/frameMath';
 import type { Shot } from '../types/shot';
 import { createEmptyShot } from '../types/shot';
@@ -59,7 +60,7 @@ export const useShotStore = defineStore('shot', {
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
-      const id = await api.addShot(shot);
+      const id = await addShotTracked(shot);
       const saved: Shot = { ...shot, id };
       this.shots = [...this.shots, saved].sort((a, b) => a.code.localeCompare(b.code, 'zh-Hans-CN'));
       this.currentId = id;
